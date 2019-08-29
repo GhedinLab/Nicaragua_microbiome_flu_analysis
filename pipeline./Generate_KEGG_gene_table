@@ -3,3 +3,4 @@ srun perl /scratch/lz967/Nicaragua_pilot_filtered_reads/FMAP-master/FMAP_mapping
 srun perl /scratch/lz967/Nicaragua_pilot_filtered_reads/FMAP-master/FMAP_quantification.pl  "${ARRAY[$SLURM_ARRAY_TASK_ID]}".unique.mapping.txt > "${ARRAY[$SLURM_ARRAY_TASK_ID]}".unique.abundance.txt
 
 #combine the individual files into the gene.table.txt 
+ 
