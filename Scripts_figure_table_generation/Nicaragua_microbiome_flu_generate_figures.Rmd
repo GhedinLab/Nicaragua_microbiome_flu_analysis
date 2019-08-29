@@ -1,0 +1,168 @@
+---
+title: "Nicaragua_microbiome_flu_analysis"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load libraries}
+library("DESeq2")
+library("randomcoloR")
+require("grDevices")
+library("ggplot2")
+library("cluster")
+library("factoextra")
+library("phyloseq")
+library("pheatmap")
+
+```
+```{r FigS1}
+#read in table S1 in supplementary
+table_s1=as.data.frame(table_s1)
+#read in the gene table available at GEO 
+gene_table<-as.data.frame(gene_table)
+rownames(gene_table)<-gene_table$orthology
+gene_table$orthology<-NULL
+gene_table$definition<-NULL
+gene_table_sample=colnames(gene_table)
+table_s1_order=table_s1[match(gene_table_sample,table_s1$Subject_Identifier),]
+colnames(gene_table)<-table_s1_order$Study_ID
+
+#filter the gene table
+gene_filter<- gene_table[rowSums(gene_table==0)<20, ]
+#scale the gene matrix 
+gene_table_t<-t(gene_filter)
+gene_scale<-scale(gene_table_t,center=TRUE,scale=TRUE)
+#compute for the clustering 
+d <- dist(gene_scale, method = "euclidean")
+hc1 <- hclust(d, method = "complete")
+#create the partition 
+partition=cutree(hc1,2)
+partition<-as.data.frame(partition)
+partition$samples<-rownames(partition)
+#save the hc plot 
+pdf("FigS1.pdf",width=7,height=5)
+plot(hc1)
+dev.off()
+write.table(partition,"gene_partition.txt",col.names = TRUE,row.names = FALSE)
+#output the gene partitions 
+
+```
+
+```{r Figure 1a}
+ARG_percent<-read.table("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/ARG_data_to_plot_reads_grouped_IDs_normalized*100.txt",sep="\t",header=TRUE)
+ARG_percent$reads<-ARG_percent$reads/100
+ARG_percent_order=ARG_percent[order(ARG_percent$partition),]
+colfunc <- colorRampPalette(c("purple", "white"))
+colfunc(10)
+p <- ggplot(ARG_percent_order, aes(as.factor(IDs), class)) + geom_tile(aes(fill = reads)) + scale_fill_gradient(low = "#F4E6FD", high ="#A020F0")+theme(panel.background = element_blank())+facet_grid(~partition,scales="free",space="free")
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/Figure1a.pdf",p,dpi=300,useDingbats=FALSE,width = 10,height = 7)
+
+```
+```{r Figure 1b}
+
+###pca###
+#use the data output in FigS1 section 
+gene_filter_t=t(gene_filter)
+gene_pca<-prcomp(gene_filter_t,scale=TRUE,center=TRUE)
+#plot pca
+df_out<-as.data.frame(gene_pca$x)
+df_out$samples<-rownames(df_out)
+
+partition_reorder<-partition[match(as.vector(df_out$samples),partition$samples),]
+df_out$group<-partition_reorder$partition
+df_out$group<-as.factor(df_out$group)
+
+
+new_color=c("1"="#E41A1C","2"="#0000FF")
+p<-ggplot(df_out,aes(PC1,PC2,shape=group,color=group))+geom_point()
+p<-p+scale_colour_manual(values=new_color)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(),axis.line.x = element_line(color="black"),axis.line.y = element_line(color="black"))+geom_text(aes(label=samples),hjust=0, vjust=0)
+p
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/ Fig1b.pdf",p,dpi=300,useDingbats=FALSE)
+
+
+
+
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r Figure 2a}
+#The gene_partition_pathway_adjust file was generated from the Pathway_analysis_between_two_groups.sh script and the groups were the partition generated from output of FigS1 section. 
+gene_pathway<-as.data.frame(gene_partition_pathway_adjust)
+gene_pathway_filter<-subset(gene_pathway,gene_pathway$pvalue<=0.05)
+
+UP<-c("8","20","8","4","9","15","8","13","8","4","4","6","1","19","6","33","12")
+DOWN<-c("1","2","1","0","0","0","2","0","1","0","2","1","0","4","0","6","0")
+UP<-as.numeric(UP)
+DOWN<-as.numeric(DOWN)
+DOWN_neg<-DOWN*(-1)
+
+pathway<-c(gene_pathway_filter$definition,gene_pathway_filter$definition)
+pathway<-as.data.frame(pathway)
+colnames(pathway)<-c("pathway")
+#pathway$gene_number<-c(UP,DOWN_neg)
+pathway$gene_number<-c(UP,DOWN)
+pathway$group<-c(rep("2",length(UP)),rep("1",length(DOWN)))
+
+p<-ggplot(data=pathway,mapping = aes(x = group, y = pathway,fill = gene_number)) + geom_tile() + xlab(label = "group")+scale_fill_gradient2('gene_number', low = "white", high = "purple", limits=c(0,35), breaks =c(0,5,10,20,30))+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(),axis.ticks.x=element_blank(),axis.ticks.y=element_blank(),legend.position="bottom",legend.key.width = unit(1.5, "cm"),legend.key.height  = unit(0.5, "cm"))+scale_y_discrete(expand = c(0, 0))+scale_x_discrete(expand = c(0, 0))
+p
+
+
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/Fig2a.pdf",p,dpi=300,useDingbats=FALSE)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+
+```{r Figure 2b}
+##compare between Lifse and deseq2
+#The MT taxonomic assignment table was uploaded to lefse to generate the lefse results
+#input lefse results 
+Data_lifse=read.table("Galaxy28-[B)_LDA_Effect_Size_(LEfSe)_on_data_27].lefse_internal_res",header=FALSE,sep="\t")
+Data_lifse_filter=Data_lifse[-which(Data_lifse$V5 == "-"),]
+Data_lifse_filter_2=na.omit(Data_lifse_filter, cols = c("V4"))
+Data_lifse_filter_2$V5=as.numeric(as.character(Data_lifse_filter_2$V5))
+Data_lifse_filter_2$V4=as.numeric(Data_lifse_filter_2$V4)
+
+Data_lifse_output=subset(Data_lifse_filter_2,Data_lifse_filter_2$V4>=2)
+Data_lifse_output_2=subset(Data_lifse_output,Data_lifse_output$V5 <=0.05)
+
+Lifse_spp=as.vector(Data_lifse_output_2$V1)
+#input the DEseq2 results
+#The results were generated using the MT taxonomic assignments data and the groups generated from FigS1.See the scripts of DEseq2 from xxx.Rmd 
+Data_DES=read.table("taxa_diff_deseq2",header=TRUE,sep="\t")
+DEseq2_spp=as.vector(Data_DES$spp)
+I=intersect(DEseq2_spp,Lifse_spp)
+
+DES_Data_I=subset(Data_DES,Data_DES$spp %in% I)
+DES_Data_I$spp=gsub("_"," ",DES_Data_I$spp)
+DES_Data_I$group=rep("1",dim(DES_Data_I)[1])
+DES_Data_I$group[DES_Data_I$log2_fold>0]<-"2"
+
+
+library("ggplot2")
+mycolor=c("#FF0000","#0000FF")
+p <-ggplot() + geom_bar(aes(fill = group,y = log2_fold, x = spp), data = DES_Data_I, stat = "identity",position = position_stack(reverse = TRUE)) + coord_flip()+scale_fill_manual(values=mycolor)+theme(axis.ticks.y=element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(),axis.line.x = element_line(color="black"))+scale_y_continuous(expand = c(0, 0))+ylab("log 2 fold change")+xlab("Bacterial spp.")
+p
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/Fig2b.pdf",p,dpi=300,useDingbats=FALSE)
+
+```
+
+```{r }
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

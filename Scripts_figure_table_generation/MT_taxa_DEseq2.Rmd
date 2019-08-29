@@ -1,0 +1,83 @@
+---
+title: "MT_taxa_DEseq2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("DESeq2")
+Data=read.table("kraken_all_samples.txt",header=TRUE)
+rownames(Data)<-Data$taxa
+Data$taxa<-NULL
+samples=colnames(Data)
+sample=substr(samples,2,nchar(samples))
+colnames(Data)<-sample
+#filter the data 
+Data[ Data<10 ] <- 0
+partition<-read.table("/Users/lingdizhang/Desktop/Analysis rerun/gene_partition.txt",header=TRUE)
+colnames(partition)<-c("group","samples")
+samples_partition<-partition$samples
+sample_intersect<-intersect(samples_partition,sample)
+Data_filter<-Data[,sample_intersect,drop=TRUE]
+count_data<-as.matrix(Data_filter)
+partition_filter<-partition[match(sample_intersect,partition$samples),]
+
+colData<-partition_filter
+rownames(colData)<-colData$samples
+colData$samples<-NULL
+colnames(colData)<-"group"
+samples<-rownames(colData)
+colData$group<-as.factor(colData$group)
+
+
+y <- DESeqDataSetFromMatrix(countData = count_data,colData = colData,design=~ group)
+y<- y[ rowSums(counts(y)) > 100, ]
+DES<-DESeq(y)
+res <- results(DES)
+DES_gene<-subset(res,res$padj<=0.05)
+DES_gene_log2fold<-subset(DES_gene,abs(DES_gene$log2FoldChange)>=2)
+genes<-rownames(DES_gene_log2fold)
+
+
+taxa_split<-strsplit(genes,"|",fixed=TRUE)
+taxa_genus<-c()
+taxa_spp<-c()
+for(i in 1:length(genes)){taxa_genus<-c(taxa_genus,taxa_split[[i]][6])}
+for(i in 1:length(genes)){taxa_spp<-c(taxa_spp,taxa_split[[i]][7])}
+#taxa_genus_name<-gsub("g__","",taxa_genus)
+taxa_spp_name<-gsub("s__","",taxa_spp)
+#taxa=paste(taxa_genus_name,taxa_spp_name)
+
+
+Data_DES<-data.frame(taxa_spp_name,DES_gene_log2fold$log2FoldChange)
+colnames(Data_DES)<-c("spp","log2_fold")
+#Data_DES <- Data_DES[!(Data_DES$spp == "<NA>"), ]
+#Data_DES <- Data_DES[!(Data_DES$log2_fold == "NA"), ]
+Data_DES <- na.omit(Data_DES)
+
+write.table(Data_DES,"taxa_diff_deseq2",col.names = TRUE, row.names = FALSE, sep="\t", quote=FALSE)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
