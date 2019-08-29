@@ -1,0 +1,10 @@
+###ARG reads align to the kraken database ####
+#use the filtered reads output from ARG_matrix_generation.Rmd and extract the fastq sequences
+#convert fastq files to fasta files 
+
+#run Kraken on the reads 
+srun kraken --db /scratch/lz967/kraken_database  "${ARRAY[$SLURM_ARRAY_TASK_ID]}".ARG_filtered_reads.fasta    --output "${ARRAY[$SLURM_ARRAY_TASK_ID]}".ARG.kraken
+
+srun kraken-translate --mpa-format --db /scratch/lz967/kraken_database  "${ARRAY[$SLURM_ARRAY_TASK_ID]}".ARG.kraken  > "${ARRAY[$SLURM_ARRAY_TASK_ID]}".ARG.kraken.translate
+
+
