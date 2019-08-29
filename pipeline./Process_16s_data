@@ -1,0 +1,18 @@
+###16s analysis###
+#use the scripts from qiime pipeline 
+#join the reads 
+join_paired_ends.py -f forward_reads.fastq -r reverse_reads.fastq -b barcodes.fastq -o fastq-join_joined
+
+#demultiplex and quality filtering 
+split_libraries_fastq.py -i /scratch/lz967/16s_pilot_rerun/fastq-join_joined/fastqjoin.join.fastq    -b /scratch/lz967/16s_pilot_rerun/fastq-join_joined/fastqjoin.join_barcodes.fastq --rev_comp_mapping_barcodes -o joined_demux/  -m map.tsv_sample.txt  -q 19
+
+#identify chimeric reads 
+identify_chimeric_seqs.py -i /scratch/lz967/16s_pilot_rerun/joined_demux/seqs.fna -m usearch61 -o /scratch/lz967/16s_pilot_rerun/usearch_checked_chimeras -r /scratch/lz967/16s_pilot_rerun/gg_13_8_otus/rep_set/97_otus.fasta
+#remove chimeric reads 
+filter_fasta.py -f /scratch/lz967/16s_pilot_rerun/joined_demux/seqs.fna -o /scratch/lz967/16s_pilot_rerun/seqs_chimeras_filtered.fna -s /scratch/lz967/16s_pilot_rerun/usearch_checked_chimeras/chimeras.txt -n
+
+#pick the OTUs
+pick_closed_reference_otus.py -i /scratch/lz967/16s_pilot_rerun/seqs_chimeras_filtered.fna  -o /scratch/lz967/16s_pilot_rerun/taxa_checked_chimera -s
+
+#output the taxa summary for absolute counts 
+summarize_taxa.py -i /scratch/lz967/16s_pilot_rerun/taxa_checked_chimera/otu_table.biom  -o /scratch/lz967/16s_pilot_rerun/taxa_summary_check_chimera_absolute -a
