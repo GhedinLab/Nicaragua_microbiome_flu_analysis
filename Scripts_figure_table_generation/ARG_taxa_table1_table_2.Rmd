@@ -1,0 +1,257 @@
+---
+title: "Taxa-ARG_associations"
+output: html_document
+---
+
+```{r read in taxa and ARG}
+#read in otu
+
+otu<-read.table("/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /16s_pilot_check_chimera/taxa_summary_check_chimera_absolute/otu_table_L6.txt",sep="\t",header=TRUE)
+rownames(otu)<-otu$OTU
+otu$OTU<-NULL
+samples_otu<-colnames(otu)
+samples_otu<-substr(samples_otu,2,nchar(samples_otu))
+colnames(otu)<-samples_otu
+#filter samples 
+otu_filter_1<-otu[,colSums(otu)>=5000]
+samples_otu<-colnames(otu_filter_1)
+#read in ARG 
+ARG<-read.table("/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/ARG_class", sep="\t",header=TRUE)
+rownames(ARG)<-ARG$class
+ARG$class<-NULL
+samples_ARG<-colnames(ARG)
+samples_ARG<-substr(samples_ARG,2,nchar(samples_ARG))
+colnames(ARG)<-samples_ARG
+ARG[is.na(ARG)]<-0
+#filter samples 
+sample<-intersect(samples_ARG,samples_otu)
+otu_sample_filter<-otu_filter_1[,sample,drop=TRUE]
+ARG_sample_filter<-ARG[,sample,drop=TRUE]
+#filter otus,remove the low abundance and low occurance OTUs 
+otu_filtered<-otu_sample_filter[rowSums(otu_sample_filter)>=5,]
+for (i in 1:dim(otu_filtered)[1]){a=which(otu_filtered[i,]==0); if ((length(a)/32) >=0.9) {otu_filtered=otu_filtered[-i,]}}
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r compPLS}
+library(spls)
+library(compPLS)
+#clr transform of otus
+otu_clr<-clr(otu_filtered)
+#transform ARG and otu
+ARG=t(ARG_sample_filter)
+otu_clr_t=t(otu_clr)
+Y=ARG
+Y <- scale(Y, center=TRUE, scale=TRUE)
+X <- scale(otu_clr_t, center=TRUE, scale=FALSE) 
+#reduce the dimensions based on covariance and decompose the covariance based on svd singular values 
+#covarince of X and Y
+XY <- cov(X, Y)
+#choose K
+dim(XY)
+tmp <- svd(XY)
+tmp$d
+#d is the squareroot of eigenvalues 
+barplot(tmp$d) 
+#13 non-zero bars 
+K=13
+
+#clean X 
+#avoid the zero variance in bootstrapping 
+a=caret:::nearZeroVar(X,freqCut = 20, uniqueCut = 30)
+X_rm=X[,-c(a)]
+
+#cv <- cv.spls( X_rm, Y, eta = seq(0.1,0.9,0.1), K = c(1:25) )
+#use stars and 10 fold cv to choose eta, the soft thresholding and select for the stable sparse model 
+out.stars <- compPLS:::spls.stars(X_rm,Y, fold=10, rep.num=50, K=K, eta=(seq((0.1), (.999), length.out=10)), ncores=1, scale.x=TRUE, scale.y = FALSE,stars.thresh = 0.05 )
+out.stars$opt.ind <- which.min((out.stars$variability[,1][out.stars$variability[,1] >= .1]))
+out.stars$eta.opt <- as.numeric(row.names(out.stars$variability)[out.stars$opt.ind])
+#spls using the selected k and eta 
+out.spls <- spls::spls(X_rm, Y, eta=out.stars$eta.opt, K=K)
+#use bootstrapping and permutation test to get significant regression coefficients. 
+i.bfun <- function(x, indices, ...) spls::spls(x[indices,,drop=FALSE], Y[indices,], ...)$betahat
+i.pfun <- function(x, indices, ...) {
+  #permutation, select columns. permute samples across ARGs and OTUs
+  #disturbe the order of X and Y and then select the same indices 
+  x.rand <- apply(x, 2, function(x) sample(x))[indices, ]
+  y.rand <- apply(Y, 2, function(x) sample(x))[indices, ]
+  spls::spls(x.rand, y.rand, ...)$betahat
+}
+#A is the active set of predictors 
+out.spls.boot <- compPLS:::splsdaboot(X_rm[,out.spls$A], i.bfun, i.pfun, eta=out.stars$eta.opt, K=out.spls$K, R=2000) ## R = number of bootstraps
+#compare the beta distribution with bootstrapping and permutation. 
+#mean comparision 
+#whether the beta bootstrapping distribution is different than the null distribution 
+pv <- compPLS:::pval.splsdaboot(out.spls.boot)
+pv=as.data.frame(pv)
+pv[is.na(pv)]<-1
+#filter for significant beta 
+pv[pv>0.05]<-1
+pv=pv[rowSums(pv)<13.0,]
+
+
+#see whether the response variables can be predicted by the predictors 
+#use the significant taxa 
+taxa=rownames(pv)
+#re-run the spls with the taxa selected 
+X_new=X_rm[,taxa]
+out.stars <- compPLS:::spls.stars(X_new,Y, fold=10,rep.num=50, K=K, eta=(seq((0.1), (.999), length.out=10)), ncores=1, scale.x=TRUE, scale.y = FALSE,stars.thresh = 0.05 )
+out.stars$opt.ind <- which.min((out.stars$variability[,1][out.stars$variability[,1] >= .1]))
+out.stars$eta.opt <- as.numeric(row.names(out.stars$variability)[out.stars$opt.ind])
+out.spls <- spls::spls(X_new, Y, eta=out.stars$eta.opt, K=K)
+#plot the predicted Y versus the actual Y
+plot.new()
+par(xpd=FALSE)
+Ypred <- scale(X_new[,out.spls$A] %*% out.spls$betahat[out.spls$A,,drop=FALSE])
+
+correlation.lm = lm(Ypred[,1]~Y[,1])
+summary(correlation.lm)$r.squared
+pdf("Predicted Aminoglycosides Gene Expression",width=7,height=5)
+plot(Ypred[,1], Y[,1], xlab="Predicted Aminoglycosides Gene Expression", ylab="Actual Aminoglycosides Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,2]~Y[,2])
+summary(correlation.lm)$r.squared
+pdf("Predicted Betalactams Gene Expression",width=7,height=5)
+plot(Ypred[,2], Y[,2], xlab="Predicted Betalactams Gene Expression", ylab="Actual Betalactams Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,3]~Y[,3])
+summary(correlation.lm)$r.squared
+pdf("Predicted Cationic_antimicrobial_peptides Gene Expression",width=7,height=5)
+plot(Ypred[,3], Y[,3], xlab="Predicted Cationic_antimicrobial_peptides Gene Expression", ylab="Actual Cationic_antimicrobial_peptides Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,4]~Y[,4])
+summary(correlation.lm)$r.squared
+pdf("Predicted Glycopeptides Gene Expression",width=7,height=5)
+plot(Ypred[,4], Y[,4], xlab="Predicted Glycopeptides Gene Expression", ylab="Actual Glycopeptides Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,5]~Y[,5])
+summary(correlation.lm)$r.squared
+pdf("Predicted MLS Gene Expression",width=7,height=5)
+plot(Ypred[,5], Y[,5], xlab="Predicted MLS Gene Expression", ylab="Actual MLS Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,6]~Y[,6])
+summary(correlation.lm)$r.squared
+pdf("Predicted Multi-drug_resistance Gene Expression",width=7,height=5)
+plot(Ypred[,6], Y[,6], xlab="Predicted Multi-drug_resistance Gene Expression", ylab="Actual Multi-drug_resistance Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,7]~Y[,7])
+summary(correlation.lm)$r.squared
+pdf("Predicted Phenicol Gene Expression",width=7,height=5)
+plot(Ypred[,7], Y[,7], xlab="Predicted Phenicol Gene Expression", ylab="Actual Phenicol Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,8]~Y[,8])
+summary(correlation.lm)$r.squared
+pdf("Predicted Tetracyclines Gene Expression",width=7,height=5)
+plot(Ypred[,8], Y[,8], xlab="Predicted Tetracyclines Gene Expression", ylab="Actual Tetracyclines Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,9]~Y[,9])
+summary(correlation.lm)$r.squared
+pdf("Predicted Trimethoprim Gene Expression",width=7,height=5)
+plot(Ypred[,9], Y[,9], xlab="Predicted Trimethoprim Gene Expression", ylab="Actual Trimethoprim Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,10]~Y[,10])
+summary(correlation.lm)$r.squared
+pdf("Predicted Fluoroquinolones Gene Expression",width=7,height=5)
+plot(Ypred[,10], Y[,10], xlab="Predicted Fluoroquinolones Gene Expression", ylab="Actual Fluoroquinolones Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,11]~Y[,11])
+summary(correlation.lm)$r.squared
+pdf("Predicted Fosfomycin Gene Expression",width=7,height=5)
+plot(Ypred[,11], Y[,11], xlab="Predicted Fosfomycin Gene Expression", ylab="Actual Fosfomycin Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,12]~Y[,12])
+summary(correlation.lm)$r.squared
+pdf("Predicted Rifampin Gene Expression",width=7,height=5)
+plot(Ypred[,12], Y[,12], xlab="Predicted Rifampin Gene Expression", ylab="Actual Rifampin Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+correlation.lm = lm(Ypred[,13]~Y[,13])
+summary(correlation.lm)$r.squared
+pdf("Predicted Sulfonamides Gene Expression",width=7,height=5)
+plot(Ypred[,13], Y[,13], xlab="Predicted Sulfonamides Gene Expression", ylab="Actual Sulfonamides Gene Expression")
+abline(correlation.lm)
+dev.off()
+
+#keep only the significance associations and the categories can be predicted. 
+
+pv_new=pv[,c(2,5,6,8)]
+pv_new[pv_new>0.05]<-1
+pv_new=pv_new[rowSums(pv_new)<4.0,]
+taxa_to_select<-rownames(pv_new)
+beta<-as.data.frame(out.spls$betahat)
+beta_to_select<-beta[,c(2,5,6,8)]
+beta_to_select$taxa<-rownames(beta)
+beta_to_select<-subset(beta_to_select,beta_to_select$taxa %in% taxa_to_select)
+
+write.table(beta_to_select,"beta_to_select",sep="\t",col.names = TRUE,row.names = FALSE)
+
+association<-data.frame(pv_new)
+taxa<-rownames(pv_new)
+#taxa_split<-strsplit(taxa,";",fixed=TRUE)
+#taxa_genus<-c()
+#for(i in 1:length(taxa)){taxa_genus<-c(taxa_genus,taxa_split[[i]][6])}
+#taxa_genus_name<-gsub("g__","",taxa_genus)
+association$full_taxa<-rownames(association)
+association$taxa<-taxa
+betalactam_data<-subset(association,association$betalactams<=0.05)
+betalactam<-data.frame(betalactam_data$taxa,betalactam_data$betalactams)
+colnames(betalactam)<-c("taxa","p-values")
+write.table(betalactam,"betalactam_associations_full_name",sep="\t",col.names = TRUE,row.names = FALSE)
+
+MLS_data<-subset(association,association$MLS<=0.05)
+MLS<-data.frame(MLS_data$taxa,MLS_data$MLS)
+colnames(MLS)<-c("taxa","p-values")
+write.table(MLS,"MLS_associations_full_name",sep="\t",col.names = TRUE,row.names = FALSE)
+
+multi_data<-subset(association,association$Multi.drug_resistance<=0.05)
+multi<-data.frame(multi_data$taxa,multi_data$Multi.drug_resistance)
+colnames(multi)<-c("taxa","p-values")
+write.table(multi,"multi-drug-resistance_associations_full_name",sep="\t",col.names = TRUE,row.names = FALSE)
+
+tetracycline_data<-subset(association,association$Tetracyclines<=0.05)
+tetracycline<-data.frame(tetracycline_data$taxa,tetracycline_data$Tetracyclines)
+colnames(tetracycline)<-c("taxa","p-values")
+write.table(tetracycline,"tetracycline_associations_full_name",sep="\t",col.names = TRUE,row.names = FALSE)
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
