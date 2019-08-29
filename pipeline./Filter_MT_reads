@@ -1,0 +1,48 @@
+#####Filter Metatranscriptomics reads######
+###remove adaptors, rRNA and human reads###
+#The scripts were run on slurm 
+###remove the adaptors 
+module load trimmomatic/0.36
+srun java -jar /share/apps/trimmomatic/0.36/trimmomatic-0.36.jar \
+PE \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".r1.fastq.gz \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".r2.fastq.gz \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.r1.fastq \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.r1.fastq \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.r2.fastq \
+"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.r2.fastq \
+ILLUMINACLIP:TruSeq3-PE-2.fa:2:30:10 \
+LEADING:3 \
+TRAILING:3 \
+SLIDINGWINDOW:4:15 \
+MINLEN:28 \
+
+
+module load python/intel/2.7.12
+
+srun python interleave-fastq.py "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.r1.fastq "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.r2.fastq > "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.interleaved.fastq
+
+srun cat "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.r1.fastq "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.r2.fastq > "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.fastq
+
+###remove rRNA sequences 
+module load sortmerna/intel/2.1b
+cd /scratch/lz967
+
+srun /share/apps/sortmerna/2.1b/intel/sortmerna  --ref ./sortmeRNA_database/rfam-5.8s-database-id98.fasta,./sortmeRNA_database/rfam-5.8s-database-id98.db:./sortmeRNA_database/rfam-5s-database-id98.fasta,./sortmeRNA_database/rfam-5s-database-id98.db:./sortmeRNA_database/silva-arc-16s-id95.fasta,./sortmeRNA_database/silva-arc-16s-id95.db:./sortmeRNA_database/silva-arc-23s-id98.fasta,./sortmeRNA_database/silva-arc-23s-id98.db:./sortmeRNA_database/silva-bac-16s-id90.fasta,./sortmeRNA_database/silva-bac-16s-id90.db:./sortmeRNA_database/silva-bac-23s-id98.fasta,./sortmeRNA_database/silva-bac-23s-id98.db:./sortmeRNA_database/silva-euk-18s-id95.fasta,./sortmeRNA_database/silva-euk-18s-id95.db:./sortmeRNA_database/silva-euk-28s-id98.fasta,./sortmeRNA_database/silva-euk-28s-id98.db --otu_map -a 20 -m 4096 --paired_in --other ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.interleaved.non-rRNA --fastx --log --reads ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.interleaved.fastq --aligned ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.interleaved.rRNA
+
+srun /share/apps/sortmerna/2.1b/intel/sortmerna --otu_map -a 20 -m 4096 --aligned ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.rRNA --other ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.non-rRNA --fastx --log --reads ./Nicaragua_MT/"${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.fastq --ref ./sortmeRNA_database/rfam-5.8s-database-id98.fasta,./sortmeRNA_database/rfam-5.8s-database-id98.db:./sortmeRNA_database/rfam-5s-database-id98.fasta,./sortmeRNA_database/rfam-5s-database-id98.db:./sortmeRNA_database/silva-arc-16s-id95.fasta,./sortmeRNA_database/silva-arc-16s-id95.db:./sortmeRNA_database/silva-arc-23s-id98.fasta,./sortmeRNA_database/silva-arc-23s-id98.db:./sortmeRNA_database/silva-bac-16s-id90.fasta,./sortmeRNA_database/silva-bac-16s-id90.db:./sortmeRNA_database/silva-bac-23s-id98.fasta,./sortmeRNA_database/silva-bac-23s-id98.db:./sortmeRNA_database/silva-euk-18s-id95.fasta,./sortmeRNA_database/silva-euk-18s-id95.db:./sortmeRNA_database/silva-euk-28s-id98.fasta,./sortmeRNA_database/silva-euk-28s-id98.db
+
+
+###remove the human, flu and phix reads 
+module load deconseq/0.4.3
+cd /scratch/lz967/Nicaragua_MT
+
+srun cat "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.interleaved.non-rRNA.fastq "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.se.non-rRNA.fastq > "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.non-rRNA.fastq
+
+srun perl  /scratch/lz967/deconseq-standalone-0.4.3/deconseq.pl -id "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.non-rRNA.non-human_phix  -f "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.non-rRNA.fastq  -dbs hg19_phix_index  -out_dir /scratch/lz967/Nicaragua_MT/
+
+###extract paired end reads from the filtered reads files 
+srun python  extract-paired-reads-from-one-file.py  "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.non-rRNA.non-human_phix_clean.fq  "${ARRAY[$SLURM_ARRAY_TASK_ID]}".trimmed.non-rRNA.non-human_phix_clean
+
+###fastquniq remove the duplicated reads###
+fastuniq -i ${p}.input_list.txt -t q -o ${p}.clean.combined.fastuniq.r1.fastq  -p ${p}.clean.combined.fastuniq.r2.fastq
