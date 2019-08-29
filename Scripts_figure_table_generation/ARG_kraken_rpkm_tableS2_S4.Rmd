@@ -1,0 +1,115 @@
+---
+title: "ARG_norm_kraken"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r generate ARG taxonomic assignments table}
+#The bacterial taxonomic assignments and the corresponding antibiotic resistance gene length were linked by taxa_ARG_norm.py script 
+#Normalize the counts from ARG kraken output to the antibiotic resistance genes length and the library size  
+setwd("~/Desktop/ARG_kraken")
+sampleID=c("3522","6271","6628","6019","6471","6667","6205","6617","7637","30076","6929","7765","30082","6957","7965","6777","7331","8033","30112","30292","30304","30191","30295","30348","30291","30301","30427","30429","619","7153","30455","7047","8561","30515","7098")
+
+files<-c("3522.taxa_ARG_gene_length","6271.taxa_ARG_gene_length","6628.taxa_ARG_gene_length","6019.taxa_ARG_gene_length","6471.taxa_ARG_gene_length","6667.taxa_ARG_gene_length","6205.taxa_ARG_gene_length","6617.taxa_ARG_gene_length","7637.taxa_ARG_gene_length","30076.taxa_ARG_gene_length","6929.taxa_ARG_gene_length","7765.taxa_ARG_gene_length","30082.taxa_ARG_gene_length","6957.taxa_ARG_gene_length","7965.taxa_ARG_gene_length","6777.taxa_ARG_gene_length","7331.taxa_ARG_gene_length","8033.taxa_ARG_gene_length","30112.taxa_ARG_gene_length","30292.taxa_ARG_gene_length","30304.taxa_ARG_gene_length","30191.taxa_ARG_gene_length","30295.taxa_ARG_gene_length","30348.taxa_ARG_gene_length","30291.taxa_ARG_gene_length","30301.taxa_ARG_gene_length","30427.taxa_ARG_gene_length","30429.taxa_ARG_gene_length","619.taxa_ARG_gene_length","7153.taxa_ARG_gene_length","30455.taxa_ARG_gene_length","7047.taxa_ARG_gene_length","8561.taxa_ARG_gene_length","30515.taxa_ARG_gene_length","7098.taxa_ARG_gene_length")
+files_read=list()
+for(i in 1:35){files_read[[i]]<-read.table(files[i],header=TRUE)}
+for(i in 1:35){files_read[[i]]$count<-rep(1,dim(files_read[[i]])[1])}
+for(i in 1:35){files_read[[i]]$norm_length<-files_read[[i]]$count/files_read[[i]]$length}
+length_norm_taxa=list()
+for(i in 1:35){length_norm_taxa[[i]]=aggregate(files_read[[i]]$norm_length,by=list(files_read[[i]]$taxa),FUN=sum)}
+for(i in 1:35){colnames(length_norm_taxa[[i]])<-c("taxa","norm_counts")}
+
+sample_combine=list()
+sample_combine[[1]]<-merge(length_norm_taxa[[1]],length_norm_taxa[[2]],by="taxa",all.x=TRUE, all.y=TRUE)
+for(i in 2:34){sample_combine[[i]]<-merge(length_norm_taxa[[i+1]],sample_combine[[i-1]],by="taxa",all.x=TRUE,all.y=TRUE)}
+
+colnames(sample_combine[[34]])<-c("taxa",sampleID)
+Data=sample_combine[[34]]
+rownames(Data)<-Data$taxa
+Data[is.na(Data)] <- 0
+Data$taxa<-NULL
+
+#reads_stat <- read_csv("~/Desktop/Analysis rerun/ARG_mapping/reads_stat.csv")
+#Use the total reads number as library size to do the normalization 
+reads_stats<-as.data.frame(reads_stat)
+reads_stats$sample<-as.character(reads_stats$sample)
+reads_stat_reorder=reads_stats[match(sample,reads_stats$sample),]
+reads_unique<-as.vector((reads_stat_reorder$unique)*2)
+
+Data=t(Data)
+Data=as.data.frame(Data)
+Data$total=reads_unique
+Norm_to_gene_lib=Data/reads_unique
+Norm_to_gene_lib$total<-NULL
+Norm_to_gene_lib=t(Norm_to_gene_lib)
+Norm_to_gene_lib=Norm_to_gene_lib*10^9
+Norm_to_gene_lib=as.data.frame(Norm_to_gene_lib)
+Norm_to_gene_lib$taxa<-rownames(Norm_to_gene_lib)
+#output the normalized data matrix 
+write.table(Norm_to_gene_lib,"ARG_kraken_RPKM.txt",col.names = TRUE,row.names = FALSE,sep="\t")
+
+#rank the taxa 
+Norm_to_gene_lib$taxa<-NULL
+#look at the percentage of reads contributed to each bacterial taxa
+new_df_percent=t(Norm_to_gene_lib)/colSums(Norm_to_gene_lib)
+new_df_percent=t(new_df_percent)
+Rows=rowSums(new_df_percent)
+rows_rank=sort(Rows,decreasing = TRUE)
+row_names=names(rows_rank)
+new_df_percent_order <- new_df_percent[row_names, ]
+new_df_percent_order=as.data.frame(new_df_percent_order)
+new_df_percent_order$taxa<-rownames(new_df_percent_order)
+#output the ranked taxa with their percentage in the total reads  
+#This is table S3
+write.table(new_df_percent_order,"Table_S3_percent_gene_norm.txt",sep="\t",col.names = TRUE,row.names = FALSE,quote=FALSE)
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+setwd("~/Desktop/ARG_kraken")
+new_df_percent_order=read.table("Table_S3_percent_gene_norm.txt",sep="\t",header=TRUE)
+taxa=new_df_percent_order$taxa
+taxa_genus=gsub(".*g__","g__",taxa)
+taxa_genus_only<-gsub("\\|s__.*","",taxa_genus)
+new_df_percent_order$genus<-taxa_genus_only
+new_df_percent_order$taxa<-NULL
+aggdata <-aggregate(.~ genus, data=new_df_percent_order, FUN=sum) 
+rownames(aggdata)<-aggdata$genus
+aggdata$genus<-NULL
+genus_sum=rowSums(aggdata)
+genus_rank=sort(genus_sum,decreasing = TRUE)
+genus_rank_names=names(genus_rank)
+new_aggdata <- aggdata[genus_rank_names, ]
+names=colnames(new_aggdata)
+new_name=gsub("X","",names)
+colnames(new_aggdata)<-new_name
+new_aggdata$genus=rownames(new_aggdata)
+#The bacterial taxa were aggregated to the genus level 
+write.table(new_aggdata,"Table_S3_percent_gene_norm_genus.txt",sep="\t",col.names = TRUE,row.names = FALSE,quote=FALSE)
+
+#new_df_percent_order$taxa<-rownames(new_df_percent_order)
+df_streptococcus<-subset(new_df_percent_order,new_df_percent_order$genus=="g__Streptococcus")
+#output the bacterial taxa streptococcus and Staphylococcus
+#This is tabl_S4
+write.table(df_streptococcus,"ARG_streptococcus_gene_norm.txt",col.names = TRUE,row.names = FALSE,quote=FALSE,sep="\t")
+#This is table_S5
+df_Staphylococcus<-subset(new_df_percent_order,new_df_percent_order$genus=="g__Staphylococcus")
+write.table(df_Staphylococcus,"ARG_Staphylococcus_gene_norm.txt",col.names = TRUE,row.names = FALSE,quote=FALSE,sep="\t")
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
