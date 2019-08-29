@@ -1,0 +1,126 @@
+---
+title: 'ARG_table_generation'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+sample=c("30076", "30455", "6929", "30082" ,"30515" ,"6957", "30112","3522",  "7047",  "30191", "6019" , "7098",  "30291" ,"619" ,  "7153" ,"30292", "6205" , "7331", "30295", "6271",  "7637" ,"30301", "6471",  "7765", "30304", "6617", "7965" ,"30348", "6628", "8033", "30427", "6667", "8561", "30429", "6777")
+
+ARG_table=c("30076.ARG.uniq.q10.mapping_remove_duplicates.check", "30455.ARG.uniq.q10.mapping_remove_duplicates.check", "6929.ARG.uniq.q10.mapping_remove_duplicates.check", "30082.ARG.uniq.q10.mapping_remove_duplicates.check" ,"30515.ARG.uniq.q10.mapping_remove_duplicates.check" ,"6957.ARG.uniq.q10.mapping_remove_duplicates.check", "30112.ARG.uniq.q10.mapping_remove_duplicates.check","3522.ARG.uniq.q10.mapping_remove_duplicates.check",  "7047.ARG.uniq.q10.mapping_remove_duplicates.check",  "30191.ARG.uniq.q10.mapping_remove_duplicates.check", "6019.ARG.uniq.q10.mapping_remove_duplicates.check" , "7098.ARG.uniq.q10.mapping_remove_duplicates.check",  "30291.ARG.uniq.q10.mapping_remove_duplicates.check" ,"619.ARG.uniq.q10.mapping_remove_duplicates.check" ,  "7153.ARG.uniq.q10.mapping_remove_duplicates.check" ,"30292.ARG.uniq.q10.mapping_remove_duplicates.check", "6205.ARG.uniq.q10.mapping_remove_duplicates.check" , "7331.ARG.uniq.q10.mapping_remove_duplicates.check", "30295.ARG.uniq.q10.mapping_remove_duplicates.check", "6271.ARG.uniq.q10.mapping_remove_duplicates.check",  "7637.ARG.uniq.q10.mapping_remove_duplicates.check" ,"30301.ARG.uniq.q10.mapping_remove_duplicates.check", "6471.ARG.uniq.q10.mapping_remove_duplicates.check",  "7765.ARG.uniq.q10.mapping_remove_duplicates.check", "30304.ARG.uniq.q10.mapping_remove_duplicates.check", "6617.ARG.uniq.q10.mapping_remove_duplicates.check", "7965.ARG.uniq.q10.mapping_remove_duplicates.check" ,"30348.ARG.uniq.q10.mapping_remove_duplicates.check", "6628.ARG.uniq.q10.mapping_remove_duplicates.check", "8033.ARG.uniq.q10.mapping_remove_duplicates.check", "30427.ARG.uniq.q10.mapping_remove_duplicates.check", "6667.ARG.uniq.q10.mapping_remove_duplicates.check", "8561.ARG.uniq.q10.mapping_remove_duplicates.check", "30429.ARG.uniq.q10.mapping_remove_duplicates.check", "6777.ARG.uniq.q10.mapping_remove_duplicates.check")
+
+ARG_ref=c("30076.ARG.uniq.q10_remove_duplicates.ref", "30455.ARG.uniq.q10_remove_duplicates.ref", "6929.ARG.uniq.q10_remove_duplicates.ref", "30082.ARG.uniq.q10_remove_duplicates.ref" ,"30515.ARG.uniq.q10_remove_duplicates.ref" ,"6957.ARG.uniq.q10_remove_duplicates.ref", "30112.ARG.uniq.q10_remove_duplicates.ref","3522.ARG.uniq.q10_remove_duplicates.ref",  "7047.ARG.uniq.q10_remove_duplicates.ref",  "30191.ARG.uniq.q10_remove_duplicates.ref", "6019.ARG.uniq.q10_remove_duplicates.ref" , "7098.ARG.uniq.q10_remove_duplicates.ref",  "30291.ARG.uniq.q10_remove_duplicates.ref" ,"619.ARG.uniq.q10_remove_duplicates.ref" ,  "7153.ARG.uniq.q10_remove_duplicates.ref" ,"30292.ARG.uniq.q10_remove_duplicates.ref", "6205.ARG.uniq.q10_remove_duplicates.ref" , "7331.ARG.uniq.q10_remove_duplicates.ref", "30295.ARG.uniq.q10_remove_duplicates.ref", "6271.ARG.uniq.q10_remove_duplicates.ref",  "7637.ARG.uniq.q10_remove_duplicates.ref" ,"30301.ARG.uniq.q10_remove_duplicates.ref", "6471.ARG.uniq.q10_remove_duplicates.ref",  "7765.ARG.uniq.q10_remove_duplicates.ref", "30304.ARG.uniq.q10_remove_duplicates.ref", "6617.ARG.uniq.q10_remove_duplicates.ref", "7965.ARG.uniq.q10_remove_duplicates.ref" ,"30348.ARG.uniq.q10_remove_duplicates.ref", "6628.ARG.uniq.q10_remove_duplicates.ref", "8033.ARG.uniq.q10_remove_duplicates.ref", "30427.ARG.uniq.q10_remove_duplicates.ref", "6667.ARG.uniq.q10_remove_duplicates.ref", "8561.ARG.uniq.q10_remove_duplicates.ref", "30429.ARG.uniq.q10_remove_duplicates.ref", "6777.ARG.uniq.q10_remove_duplicates.ref")
+ARG_FULL_table=c("30076.ARG.table", "30455.ARG.table", "6929.ARG.table", "30082.ARG.table" ,"30515.ARG.table" ,"6957.ARG.table", "30112.ARG.table","3522.ARG.table",  "7047.ARG.table",  "30191.ARG.table", "6019.ARG.table" , "7098.ARG.table",  "30291.ARG.table" ,"619.ARG.table" ,  "7153.ARG.table" ,"30292.ARG.table", "6205.ARG.table" , "7331.ARG.table", "30295.ARG.table", "6271.ARG.table",  "7637.ARG.table" ,"30301.ARG.table", "6471.ARG.table",  "7765.ARG.table", "30304.ARG.table", "6617.ARG.table", "7965.ARG.table" ,"30348.ARG.table", "6628.ARG.table", "8033.ARG.table", "30427.ARG.table", "6667.ARG.table", "8561.ARG.table", "30429.ARG.table", "6777.ARG.table")
+#read in the ARG dataframe 
+Table=list()
+for(i in 1:length(sample)){Table[[i]]=read.table(ARG_table[[i]],sep="\t",header=TRUE)}
+#read in the reference genes and class data 
+Ref=list()
+for(i in 1:length(sample)){Ref[[i]]=read.table(ARG_ref[[i]],sep="\t",header=TRUE)}
+FULL_Table=list()
+for(i in 1:length(sample)){FULL_Table[[i]]=read.table(ARG_FULL_table[[i]],sep="\t",header=TRUE)}
+
+Table_filter=list()
+Table_filter_for_10=list()
+#filter for 400bp mapping and 10 reads minimum hits 
+for(i in 1:length(sample)){Table_filter[[i]]=subset(Table[[i]],Table[[i]]$Mapping>=400);Table_filter_for_10[[i]]=subset(Table_filter[[i]],Table_filter[[i]]$Reads_number>=10)}
+#output the filtered reads 
+reads=list()
+for(i in 1:length(sample)){reads[[i]]<-subset(FULL_Table[[i]],FULL_Table[[i]]$Ref %in% Table_filter_for_10[[i]]$Ref)}
+filtered_reads=list()
+for(i in 1:length(sample)){filtered_reads[[i]]<-as.vector(reads[[i]]$Reads)}
+for(i in 1:length(sample)){write.table(filtered_reads[[i]],paste(sample[i], ".filtered_reads.txt", sep = ""),quote=FALSE,col.names = FALSE,row.names = FALSE)}
+
+#re-order the reference genes and antibiotic classes table 
+Ref_order=list()
+for(i in 1:length(sample)){Ref_order[[i]]=Ref[[i]][match(as.vector(Table_filter_for_10[[i]]$Ref),Ref[[i]]$Gene),]}
+#combine the data to include the classes of antibiotic resistance genes in the dataframe 
+for(i in 1:length(sample)){Table_filter_for_10[[i]]$class<-Ref_order[[i]]$class}
+Data=list()
+for(i in 1:length(sample)){Data[[i]]<-data.frame(Table_filter_for_10[[i]]$Reads_number,Table_filter_for_10[[i]]$class,Table_filter_for_10[[i]]$Ref,rep(sample[i],dim(Table_filter_for_10[[i]])[1]));colnames(Data[[i]])<-c("reads","class","Gene","sample")}
+#aggregate the dataframes to look at the classes to antibiotics and reads number
+Data_aggregate=list()
+for(i in 1:length(sample)){Data_aggregate[[i]]<-aggregate(reads~class,data=Data[[i]],sum)}
+for(i in 1:length(sample)){Data_aggregate[[i]]$sample<-rep(sample[i],dim(Data_aggregate[[i]])[1])}
+#combine the tables for one dataframe for ggplot2 
+Data_combine=list()
+Data_combine[[1]]<-rbind(Data_aggregate[[1]],Data_aggregate[[2]])
+for(i in 2:(length(sample)-1)){Data_combine[[i]]<-rbind(Data_combine[[i-1]],Data_aggregate[[i+1]])}
+Data_to_plot<-Data_combine[[34]]
+
+library(ggplot2)
+library(RColorBrewer)
+brewer.pal(12,"Set3")
+brewer.pal(9,"Set1")
+brewer.pal(8,"Dark2")
+mycolor=c("#E41A1C","#4DAF4A", "#984EA3", "#FFFF33","#A65628", "#F781BF","#999999","#8DD3C7", "#BEBADA","#B3DE69", "#FCCDE5", "#E7298A","#8A2BE2")
+#plot the classes and read numbers 
+p <-ggplot(data=Data_to_plot, aes(x=sample,y=reads,fill=class))+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 90, hjust = 1))+scale_fill_manual(values=mycolor)
+#save the plot 
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/checke_unique_mapping_class_remove_duplicates.pdf",p,dpi=300,useDingbats=FALSE)
+#output the data 
+write.table(Data_to_plot,"/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/ARG_data_to_plot_class_reads.txt", sep="\t",col.names = TRUE, row.names = FALSE)
+
+
+
+#Combine the data for a ARG gene matrix 
+Data_to_combine<-list()
+for(i in 1:length(sample)){Data_to_combine[[i]]<-data.frame(Data_aggregate[[i]]$class,Data_aggregate[[i]]$reads);colnames(Data_to_combine[[i]])<-c("class","reads")}
+ARG_combine<-list()
+ARG_combine[[1]]<-merge(Data_to_combine[[1]],Data_to_combine[[2]],by="class",all=TRUE)
+for(i in 2:(length(sample)-1)){ARG_combine[[i]]<-merge(ARG_combine[[i-1]],Data_to_combine[[i+1]],by="class",all=TRUE)}
+#create the data matrix 
+ARG_Data<-ARG_combine[[34]]
+colnames(ARG_Data)<-c("class",sample)
+#output the data matrix 
+write.table(ARG_Data,"/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/ARG_class",sep="\t",col.names = TRUE,row.names = FALSE)
+
+####look at the relative abundance of the ARGs#####
+#normalize the ARG genes by the total reads number 
+reads_stats=as.data.frame(reads_stat)
+reads_stats$sample<-as.character(reads_stats$sample)
+reads_stat_reorder=reads_stats[match(sample,reads_stats$sample),]
+partition<-read.table("/Users/lingdizhang/Desktop/Analysis rerun/gene_partition.txt",header=TRUE,sep=" ")
+IDs<-read.table("/Users/lingdizhang/Desktop/Analysis rerun/sampleID_identifier.txt",sep="\t",header=TRUE)
+partition=partition[match(sample,partition$samples),]
+IDs=IDs[match(sample,IDs$Subject.Identifier),]
+reads_unique<-as.vector((reads_stat_reorder$unique)*2)
+Data_normalize=list()
+for(i in 1:length(sample)){Data_normalize[[i]]=Data_aggregate[[i]];Data_normalize[[i]]$reads<-(Data_aggregate[[i]]$reads)/reads_unique[i]}
+colnames(partition)<-c("group","samples")
+for(i in 1:length(sample)){Data_normalize[[i]]$partition<-partition[i,]$group;Data_normalize[[i]]$IDs<-IDs[i,]$Study.ID}
+#combined the data for ggplots 
+Data_combine=list()
+Data_combine[[1]]<-rbind(Data_normalize[[1]],Data_normalize[[2]])
+for(i in 2:(length(sample)-1)){Data_combine[[i]]<-rbind(Data_combine[[i-1]],Data_normalize[[i+1]])}
+Data_to_plot<-Data_combine[[34]]
+Data_to_plot$reads<-Data_to_plot$reads*100
+
+mycolor=c("#E41A1C","#4DAF4A", "#984EA3", "#FFFF33","#A65628", "#F781BF","#999999","#8DD3C7", "#BEBADA","#B3DE69", "#FCCDE5", "#E7298A","#000000","#8A2BE2")
+#ggplot2 for the relative abundance 
+library("ggplot2")
+p <-ggplot(data=Data_to_plot, aes(x=sample,y=reads,fill=class))+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 90, hjust = 1))+scale_fill_manual(values=mycolor)
+#save the plot 
+ggsave("/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/checke_unique_mapping_class_remove_duplicates_percent*100.pdf",p,dpi=300,useDingbats=FALSE)
+
+write.table(Data_to_plot,"/Users/lingdizhang/Desktop/Nicaragua_pilot_author_comments /Analysis rerun/ARG_data_to_plot_reads_grouped_IDs_normalized*100.txt",sep="\t",col.names = TRUE, row.names = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
