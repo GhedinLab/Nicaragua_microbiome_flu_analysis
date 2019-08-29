@@ -19,7 +19,7 @@ library("pheatmap")
 
 ```
 ```{r FigS1}
-#read in table S1 in supplementary
+#Use the first two columns in table S1
 table_s1=as.data.frame(table_s1)
 #read in the gene table available at GEO 
 gene_table<-as.data.frame(gene_table)
@@ -46,12 +46,14 @@ partition$samples<-rownames(partition)
 pdf("FigS1.pdf",width=7,height=5)
 plot(hc1)
 dev.off()
+#output the grouping results 
 write.table(partition,"gene_partition.txt",col.names = TRUE,row.names = FALSE)
 #output the gene partitions 
 
 ```
 
 ```{r Figure 1a}
+#The data was generated from the ARG data processing pipeline in the pipeline folder 
 ARG_percent<-read.table("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/ARG_data_to_plot_reads_grouped_IDs_normalized*100.txt",sep="\t",header=TRUE)
 ARG_percent$reads<-ARG_percent$reads/100
 ARG_percent_order=ARG_percent[order(ARG_percent$partition),]
@@ -88,12 +90,6 @@ ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/ Fig1b.p
 ```
 
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
 ```{r Figure 2a}
 #The gene_partition_pathway_adjust file was generated from the Pathway_analysis_between_two_groups.sh script and the groups were the partition generated from output of FigS1 section. 
 gene_pathway<-as.data.frame(gene_partition_pathway_adjust)
@@ -120,11 +116,6 @@ ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/Fig2a.pd
 
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-
 
 ```{r Figure 2b}
 ##compare between Lifse and deseq2
@@ -141,7 +132,7 @@ Data_lifse_output_2=subset(Data_lifse_output,Data_lifse_output$V5 <=0.05)
 
 Lifse_spp=as.vector(Data_lifse_output_2$V1)
 #input the DEseq2 results
-#The results were generated using the MT taxonomic assignments data and the groups generated from FigS1.See the scripts of DEseq2 from xxx.Rmd 
+#The results were generated using the MT taxonomic assignments data and the groups generated from FigS1. The taxa_diff_deseq2 file was generated from MT_taxa_DEseq2.Rmd script
 Data_DES=read.table("taxa_diff_deseq2",header=TRUE,sep="\t")
 DEseq2_spp=as.vector(Data_DES$spp)
 I=intersect(DEseq2_spp,Lifse_spp)
@@ -160,9 +151,6 @@ ggsave("/Users/lingdizhang/Desktop/Nicaragua_Flu_Microbiome/Github_code/Fig2b.pd
 
 ```
 
-```{r }
-
-```
 
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
