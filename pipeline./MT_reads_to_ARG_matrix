@@ -1,0 +1,18 @@
+#####Generate ARG matrix####
+##ARG alignment using BWA
+bwa mem /scratch/lz967/megares_database/megares_database_v1.01.fasta -t 20  ${p}.clean.combined.fastuniq.r1.fastq  ${p}.clean.combined.fastuniq.r2.fastq > ${p}.ARG.aln-pe.uniq.sam
+
+###filter the alignments
+samtools view -bS ${p}.ARG.aln-pe.uniq.sam >  ${p}.ARG.aln-pe.uniq.bam
+samtools view -q 10 -b ${p}.ARG.aln-pe.uniq.bam > ${p}.ARG.aln-pe.uniq.q10.bam
+###convert to bed files 
+bedtools bamtobed -i ${p}.ARG.aln-pe.uniq.q10.bam > ${p}.ARG.aln-pe.uniq.q10.bed
+###checking the mapping distance
+#output the coordinates of reads alignment
+python ARG_mapping_check.py  ${p}.ARG.aln-pe.uniq.q10.bed   ${p}.ARG.uniq.q10.mapping_remove_duplicates.check  ${p}.ARG.uniq.q10_remove_duplicates.ref
+python ARG_mapping_check_2.py ${p}.ARG.aln-pe.uniq.q10.bed  ${p}.ARG.table
+#filter the reads that the mapping distance need to be at least 400bp and 10 reads align per gene
+ARG_matrix_generation.Rmd
+#This script will produce the ARG gene tables used in the ARG gene analysis as well as the header of the reads aligned to the ARG genes to be used in ARG_kraken analysis. 
+
+
