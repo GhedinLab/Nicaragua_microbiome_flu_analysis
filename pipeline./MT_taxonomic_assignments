@@ -1,0 +1,4 @@
+###Taxonomy analysis using Kraken###
+kraken --db  /scratch/lz967/clean_seq_rep_2/kraken_database  ${p}.nonhuman_nonflu_clean.fa    --output ${p}.kraken
+kraken-translate --mpa-format --db /scratch/lz967/clean_seq_rep_2/kraken_database ${p}.kraken  > ${p}.kraken.translate
+#combine the individual files into kraken_all_samples.txt 
